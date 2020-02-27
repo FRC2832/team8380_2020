@@ -71,7 +71,7 @@ public class Robot extends TimedRobot {
 
     //initialize climb motors
     climbMotor = new WPI_VictorSPX(5);
-    climbFollower = new WPI_VictorSPX(5);
+    climbFollower = new WPI_VictorSPX(6);
     climbFollower.follow(climbMotor);
 
     // usb camera code
@@ -152,7 +152,7 @@ public class Robot extends TimedRobot {
     // use this for commands if supported
     // Scheduler.getInstance().run();
 
-    // run auto for 5 seconds
+    // run auto for 4 seconds
     double runTime = Timer.getFPGATimestamp() - autoStartTime;
     if (runTime < 4) {
       driveTrain.arcadeDrive(-0.5, 0);
