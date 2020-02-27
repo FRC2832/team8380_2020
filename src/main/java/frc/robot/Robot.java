@@ -9,6 +9,8 @@ package frc.robot;
 
 import com.ctre.phoenix.motorcontrol.can.WPI_VictorSPX;
 
+import edu.wpi.cscore.MjpegServer;
+import edu.wpi.cscore.UsbCamera;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
@@ -35,7 +37,10 @@ public class Robot extends TimedRobot {
   public static WPI_VictorSPX driveFR;
   public static WPI_VictorSPX driveRL;
   public static WPI_VictorSPX driveRR;
+  public static WPI_VictorSPX climbMotor;
+  public static WPI_VictorSPX climbFollower;
   public static DifferentialDrive driveTrain;
+  static MjpegServer mjpegServer1;
 
   Command m_autonomousCommand;
   SendableChooser<Command> m_chooser = new SendableChooser<>();
@@ -43,17 +48,17 @@ public class Robot extends TimedRobot {
   double autoStartTime;
 
   /**
-   * This function is run when the robot is first started up and should be
-   * used for any initialization code.
+   * This function is run when the robot is first started up and should be used
+   * for any initialization code.
    */
   @Override
   public void robotInit() {
     m_oi = new OI();
 
-    //initialize driver to port 1
-    driver = new Joystick(1);
+    // initialize driver to port 0
+    driver = new Joystick(0);
 
-    //initialize drive motors 
+    // initialize drive motors
     driveFL = new WPI_VictorSPX(1);
     driveRL = new WPI_VictorSPX(2);
     driveFR = new WPI_VictorSPX(3);
@@ -61,29 +66,44 @@ public class Robot extends TimedRobot {
     driveRL.follow(driveFL);
     driveRR.follow(driveFR);
 
-    //initialize drive speed motors
+    // initialize drive train
     driveTrain = new DifferentialDrive(driveFL, driveFR);
+
+    //initialize climb motors
+    climbMotor = new WPI_VictorSPX(5);
+    climbFollower = new WPI_VictorSPX(5);
+    climbFollower.follow(climbMotor);
+
+    // usb camera code
+    // Creates UsbCamera and MjpegServer [1] and connects them
+    UsbCamera usbCamera = new UsbCamera("USB Camera 0", 0);
+    mjpegServer1 = new MjpegServer("serve_USB Camera 0", 1181);
+    mjpegServer1.setSource(usbCamera);
+    //option 2
+    //CameraServer.getInstance().startAutomaticCapture();
+
     m_chooser.setDefaultOption("Default Auto", new ExampleCommand());
     // chooser.addOption("My Auto", new MyAutoCommand());
     SmartDashboard.putData("Auto mode", m_chooser);
   }
 
   /**
-   * This function is called every robot packet, no matter the mode. Use
-   * this for items like diagnostics that you want ran during disabled,
-   * autonomous, teleoperated and test.
+   * This function is called every robot packet, no matter the mode. Use this for
+   * items like diagnostics that you want ran during disabled, autonomous,
+   * teleoperated and test.
    *
-   * <p>This runs after the mode specific periodic functions, but before
-   * LiveWindow and SmartDashboard integrated updating.
+   * <p>
+   * This runs after the mode specific periodic functions, but before LiveWindow
+   * and SmartDashboard integrated updating.
    */
   @Override
   public void robotPeriodic() {
   }
 
   /**
-   * This function is called once each time the robot enters Disabled mode.
-   * You can use it to reset any subsystem information you want to clear when
-   * the robot is disabled.
+   * This function is called once each time the robot enters Disabled mode. You
+   * can use it to reset any subsystem information you want to clear when the
+   * robot is disabled.
    */
   @Override
   public void disabledInit() {
@@ -96,14 +116,15 @@ public class Robot extends TimedRobot {
 
   /**
    * This autonomous (along with the chooser code above) shows how to select
-   * between different autonomous modes using the dashboard. The sendable
-   * chooser code works with the Java SmartDashboard. If you prefer the
-   * LabVIEW Dashboard, remove all of the chooser code and uncomment the
-   * getString code to get the auto name from the text box below the Gyro
+   * between different autonomous modes using the dashboard. The sendable chooser
+   * code works with the Java SmartDashboard. If you prefer the LabVIEW Dashboard,
+   * remove all of the chooser code and uncomment the getString code to get the
+   * auto name from the text box below the Gyro
    *
-   * <p>You can add additional auto modes by adding additional commands to the
-   * chooser code above (like the commented example) or additional comparisons
-   * to the switch structure below with additional strings & commands.
+   * <p>
+   * You can add additional auto modes by adding additional commands to the
+   * chooser code above (like the commented example) or additional comparisons to
+   * the switch structure below with additional strings & commands.
    */
   @Override
   public void autonomousInit() {
@@ -111,10 +132,10 @@ public class Robot extends TimedRobot {
     m_autonomousCommand = m_chooser.getSelected();
 
     /*
-     * String autoSelected = SmartDashboard.getString("Auto Selector",
-     * "Default"); switch(autoSelected) { case "My Auto": autonomousCommand
-     * = new MyAutoCommand(); break; case "Default Auto": default:
-     * autonomousCommand = new ExampleCommand(); break; }
+     * String autoSelected = SmartDashboard.getString("Auto Selector", "Default");
+     * switch(autoSelected) { case "My Auto": autonomousCommand = new
+     * MyAutoCommand(); break; case "Default Auto": default: autonomousCommand = new
+     * ExampleCommand(); break; }
      */
 
     // schedule the autonomous command (example)
@@ -128,15 +149,14 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void autonomousPeriodic() {
-    //use this for commands if supported
-    //Scheduler.getInstance().run();
+    // use this for commands if supported
+    // Scheduler.getInstance().run();
 
-    //run auto for 5 seconds
+    // run auto for 5 seconds
     double runTime = Timer.getFPGATimestamp() - autoStartTime;
-    if(runTime < 5) {
-      driveTrain.arcadeDrive(0.5, 0);
-    } else 
-    {
+    if (runTime < 4) {
+      driveTrain.arcadeDrive(-0.5, 0);
+    } else {
       driveTrain.arcadeDrive(0, 0);
     }
   }
@@ -157,7 +177,19 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopPeriodic() {
+    //drive
     driveTrain.arcadeDrive(-driver.getRawAxis(1), driver.getRawAxis(4));
+
+    //climb
+    double upTrig = driver.getRawAxis(3); //right trigger
+    double downTrig = driver.getRawAxis(2); //left trigger
+    if(upTrig > 0.2) {
+      climbMotor.set(upTrig * 0.5);
+    } else if (downTrig > 0.2) {
+      climbMotor.set(-downTrig * 0.5);
+    } else {
+      climbMotor.set(0);
+    }
   }
 
   /**
